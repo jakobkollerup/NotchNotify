@@ -26,4 +26,4 @@ if [[ "${DEVROOT}" == *"CommandLineTools"* ]]; then
     fi
 fi
 
-exec swift test "${ARGS[@]}" "$@"
+exec swift test ${ARGS[@]+"${ARGS[@]}"} "$@"
