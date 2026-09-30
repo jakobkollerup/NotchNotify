@@ -1,6 +1,6 @@
 #!/usr/bin/env swift
 // Dumps the Notification Center accessibility tree and tests the one assumption
-// NotificationNanny's repositioning depends on.
+// NotchNotify's repositioning depends on.
 //
 // Since macOS 26, banners are not separate windows. They are SwiftUI views
 // inside a single fullscreen host window (AXWindow/AXSystemDialog containing an
@@ -16,7 +16,7 @@
 //
 // The process running it needs Accessibility permission (System Settings >
 // Privacy & Security > Accessibility). If you run it from Terminal, grant it to
-// Terminal. Quit NotificationNanny first, otherwise you will be measuring its
+// Terminal. Quit NotchNotify first, otherwise you will be measuring its
 // repositioning rather than the system's behaviour.
 
 import AppKit
@@ -71,8 +71,8 @@ guard AXIsProcessTrusted() else {
     exit(1)
 }
 
-if !NSRunningApplication.runningApplications(withBundleIdentifier: "com.notificationnanny.app").isEmpty {
-    print("\nNOTE: NotificationNanny is running. Quit it first or the numbers below")
+if !NSRunningApplication.runningApplications(withBundleIdentifier: "io.github.jakobkollerup.notchnotify").isEmpty {
+    print("\nNOTE: NotchNotify is running. Quit it first or the numbers below")
     print("      reflect its repositioning, not the system's own behaviour.")
 }
 
@@ -85,7 +85,7 @@ print("NotificationCenter pid \(nc.processIdentifier)")
 // Give ourselves something to look at.
 let task = Process()
 task.launchPath = "/usr/bin/osascript"
-task.arguments = ["-e", "display notification \"AX probe\" with title \"NotificationNanny probe\""]
+task.arguments = ["-e", "display notification \"AX probe\" with title \"NotchNotify probe\""]
 try? task.run()
 task.waitUntilExit()
 Thread.sleep(forTimeInterval: 1.8)
@@ -136,7 +136,7 @@ if !testedAny {
     print("hierarchy changed shape again; the tree above is the useful part.")
 }
 
-// The decisive question. NotificationNanny repositions when it sees
+// The decisive question. NotchNotify repositions when it sees
 // AXWindowCreated. If the fullscreen host is torn down between banners that
 // fires every time and all is well; if the host persists, the only signal a
 // banner arrived is AXLayoutChanged, which older builds do not subscribe to,
@@ -161,7 +161,7 @@ if let observer {
     DispatchQueue.global().asyncAfter(deadline: .now() + 0.4) {
         let t = Process()
         t.launchPath = "/usr/bin/osascript"
-        t.arguments = ["-e", "display notification \"event probe\" with title \"NotificationNanny probe\""]
+        t.arguments = ["-e", "display notification \"event probe\" with title \"NotchNotify probe\""]
         try? t.run()
         t.waitUntilExit()
     }

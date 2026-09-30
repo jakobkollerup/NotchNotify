@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://chessper53.github.io/NotificationNanny/sitemap.xml

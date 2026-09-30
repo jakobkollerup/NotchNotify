@@ -1,29 +1,26 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-// This Package.swift is provided so the sources type-check in Xcode / SwiftPM,
-// but the recommended way to RUN NotificationNanny is via an Xcode App target
-// (see README). A plain SPM executable can't easily ship the Info.plist /
-// LSUIElement settings a menu-bar app needs.
+// The build script packages this executable with its icons and app metadata.
 let package = Package(
-    name: "NotificationNanny",
+    name: "NotchNotify",
     platforms: [.macOS(.v14)],
+    products: [.executable(name: "NotchNotify", targets: ["NotchNotify"])],
     targets: [
         // All app logic lives here so tests can @testable import it.
         .target(
-            name: "NotificationNannyCore",
-            path: "Sources/NotificationNannyCore"
+            name: "NotchNotifyCore",
+            path: "Sources/NotchNotifyCore"
         ),
-        // Thin executable: just the @main entry point.
         .executableTarget(
-            name: "NotificationNanny",
-            dependencies: ["NotificationNannyCore"],
-            path: "Sources/NotificationNanny"
+            name: "NotchNotify",
+            dependencies: ["NotchNotifyCore"],
+            path: "Sources/NotchNotify"
         ),
         .testTarget(
-            name: "NotificationNannyTests",
-            dependencies: ["NotificationNannyCore"],
-            path: "Tests/NotificationNannyTests"
+            name: "NotchNotifyTests",
+            dependencies: ["NotchNotifyCore"],
+            path: "Tests/NotchNotifyTests"
         ),
     ]
 )

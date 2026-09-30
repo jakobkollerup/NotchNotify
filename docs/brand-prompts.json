@@ -1,0 +1,19 @@
+{
+  "tool": "built-in image_gen",
+  "approvedConcept": "C — Stack",
+  "approvedOn": "2026-09-30",
+  "assets": [
+    {
+      "id": "icon",
+      "prompt": "Use case: precise-object-edit. The provided image is the APPROVED concept C for NotchNotify. Extract and cleanly deliver ONLY the large macOS app icon shown on the left, as a standalone production asset. Preserve this exact approved design: pearly silver-white rounded-square tile, small black horizontal capsule above a black notification card, one gray card offset down and right behind it, one white notification dot near the top right of the front card. Preserve the proportions, neutral colors, soft tactile depth, corner radii, and restrained shadows. Do not redesign or introduce any different shapes. Front view, no perspective. Make the icon large and centered in a square high-resolution canvas with approximately 6% clear padding around the tile on each side, balanced optically. Completely transparent outside the tile including a subtle translucent shadow, genuine alpha, no checkerboard baked into the pixels. Remove the wordmark, labels, other symbols, and review-board background. No text anywhere."
+    },
+    {
+      "id": "logo",
+      "prompt": "Use case: precise-object-edit. The provided image is the APPROVED concept C for NotchNotify. Deliver ONLY the logo lockup shown on the right: the simple flat symbol with a small black capsule above two overlapping notification cards (front black, rear neutral gray, small white notification dot), with the exact wordmark \"NotchNotify\" beneath it in the same clean black sans-serif typography. Preserve the approved symbol and typography, improve crispness only, no redesign. Preserve generous balanced spacing between symbol and wordmark. Center this compact logo lockup, crop composition closely with a small safe margin. Genuine transparent background, no tile, no large app icon, no concept label, no mockup, no shadow, no checkerboard baked into pixels. Text exactly \"NotchNotify\". High-resolution, sharp graphic edges."
+    },
+    {
+      "id": "menubar",
+      "prompt": "Use case: precise-object-edit. The provided image is the APPROVED concept C for NotchNotify. Deliver ONLY the tiny monochrome menu-bar symbol from the bottom right, greatly enlarged and perfectly crisp. Preserve its exact approved geometry: short horizontal rounded capsule above a front rounded rectangular notification card, a second card offset down and right visible as an L-shaped band with a clear gap separating it from the front card, and the small circular unread dot as a transparent knockout near the upper right of the front card. IMPORTANT this is an alpha-only macOS template icon: all solid artwork must be black, every hole/gap and the unread circular knockout must be genuinely transparent, no white or gray opaque fills. True transparent background with no checkerboard baked in. No app tile, words, labels, shading, gloss, gradients, perspective or shadows. Center the simple glyph with about 10% transparent padding on a square high-resolution canvas. This is the existing approved monochrome mark, not a redesign."
+    }
+  ]
+}
