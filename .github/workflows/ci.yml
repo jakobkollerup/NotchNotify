@@ -1,4 +1,4 @@
-name: CI
+name: NotchNotify CI
 
 on:
   push:
@@ -6,113 +6,21 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel superseded runs on the same branch/PR.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  release-consistency:
-    name: Release consistency checks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cask / Info.plist macOS version match
-        run: ./scripts/test-version-consistency.sh
-      - name: Release workflow ships a universal, verified binary
-        run: ./scripts/test-release-workflow.sh
-
-  test:
-    name: Build & Test
+  test-and-build:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
-
-      - name: Select latest Xcode
-        run: |
-          XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
-          echo "Using $XCODE"
-          sudo xcode-select -s "$XCODE"
-          swift --version
-
-      - name: Cache SwiftPM build
-        uses: actions/cache@v6
-        with:
-          path: .build
-          key: ${{ runner.os }}-spm-test-${{ hashFiles('Package.swift', 'Sources/**/*.swift', 'Tests/**/*.swift') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-test-
-
-      - name: Build
-        run: swift build
-
-      - name: Test (with coverage)
-        run: swift test --enable-code-coverage
-
-      # Best-effort coverage summary printed to the job log. Non-blocking: never
-      # fails the build if the toolchain lays out artifacts differently.
-      - name: Coverage summary
-        continue-on-error: true
-        run: |
-          PROF=$(find .build -name '*.profdata' | head -1)
-          # Skip the .dSYM bundle: it contains a DWARF file with the same name as
-          # the test binary, and find hits it first. llvm-cov then rejects it with
-          # "unsupported coverage format version", which left a failure annotation
-          # on every run that continue-on-error hid from the job status.
-          BIN=$(find .build -name 'NotificationNannyPackageTests' -type f \
-                  -not -path '*.dSYM*' | head -1)
-          if [ -n "$PROF" ] && [ -n "$BIN" ]; then
-            xcrun llvm-cov report "$BIN" \
-              -instr-profile "$PROF" \
-              -ignore-filename-regex='Tests|\.build' \
-              Sources/NotificationNannyCore
-          else
-            echo "Coverage artifacts not found (PROF='$PROF' BIN='$BIN') — skipping."
-          fi
-
-  bundle:
-    name: Bundle smoke build
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Select latest Xcode
-        run: |
-          XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
-          sudo xcode-select -s "$XCODE"
-
-      - name: Cache SwiftPM build
-        uses: actions/cache@v6
-        with:
-          path: .build
-          key: ${{ runner.os }}-spm-release-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-release-
-
-      # Assembles and ad-hoc signs NotificationNanny.app — catches packaging /
-      # Info.plist / entitlements breakage that `swift build` alone won't.
-      - name: Build .app bundle
-        run: ./scripts/build-app.sh
-
-      - name: Verify bundle
-        run: |
-          test -d build/NotificationNanny.app
-          codesign --verify --verbose build/NotificationNanny.app
-
-      # The bundle was already being built and then discarded. Keeping it lets a
-      # testable .app come off a runner when no local toolchain can produce one.
-      # ditto rather than zip, to preserve the code-signing xattrs the way
-      # release.sh does; a plain zip can strip them and break the signature.
-      - name: Package for download
-        run: |
-          ditto -c -k --sequesterRsrc --keepParent \
-            build/NotificationNanny.app \
-            build/NotificationNanny-ci.zip
-
-      - name: Upload the built app
-        uses: actions/upload-artifact@v4
-        with:
-          name: NotificationNanny-app-${{ github.sha }}
-          path: build/NotificationNanny-ci.zip
-          retention-days: 14
-          if-no-files-found: error
+      - name: Unit tests
+        run: bash scripts/test.sh --skip AXIntegrationTests
+      - name: Build signed app bundle
+        run: ARCHS="arm64 x86_64" bash scripts/build-notch.sh
+      - name: Verify bundle and branding
+        run: python3 scripts/check-branding.py --app build/NotchNotify.app

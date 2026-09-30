@@ -3,7 +3,6 @@ name: Feature request
 about: Got an idea for an improvement
 title: "[Feature] "
 labels: enhancement
-assignees: chessper53
 ---
 
 **What problem does this solve?**

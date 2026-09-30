@@ -1,65 +1,82 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
 
 jobs:
-  build-and-update-cask:
-    runs-on: macos-latest
-    permissions:
-      contents: write
-
+  release:
+    runs-on: macos-26
+    env:
+      # Optional. When these secrets exist the app is signed with a Developer ID and
+      # notarized; without them the release is ad-hoc signed.
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+      NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+      NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
     steps:
       - uses: actions/checkout@v7
 
-      - name: Get version
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-
-      - name: Build
-        run: UNIVERSAL=1 ./scripts/build-app.sh
-
-      - name: Verify universal binary
+      - name: Check the tag matches VERSION and the changelog
         run: |
-          executable="build/NotificationNanny.app/Contents/MacOS/NotificationNanny"
-          architectures="$(lipo -archs "$executable")"
-          for architecture in arm64 x86_64; do
-            if [[ " $architectures " != *" $architecture "* ]]; then
-              echo "error: release binary is missing $architecture (found: $architectures)" >&2
-              exit 1
-            fi
-          done
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          test "${GITHUB_REF_NAME#v}" = "$VERSION" || { echo "Tag $GITHUB_REF_NAME does not match VERSION $VERSION"; exit 1; }
+          awk -v v="$VERSION" '$0 ~ "^## "v" " {found=1; next} found && /^## / {exit} found {print}' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          test -s "$RUNNER_TEMP/notes.md" || { echo "CHANGELOG.md has no section for $VERSION"; exit 1; }
+          ! grep -q "^## $VERSION .*unreleased" CHANGELOG.md || { echo "CHANGELOG.md still marks $VERSION as unreleased"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      - name: Zip
-        run: cd build && zip -r "../NotificationNanny-${{ steps.version.outputs.version }}.zip" NotificationNanny.app
+      - name: Unit tests
+        run: bash scripts/test.sh --skip AXIntegrationTests
 
-      - name: SHA256
-        id: sha
-        run: echo "sha256=$(shasum -a 256 "NotificationNanny-${{ steps.version.outputs.version }}.zip" | awk '{print $1}')" >> $GITHUB_OUTPUT
+      - name: Import Developer ID certificate
+        if: env.MACOS_CERTIFICATE != ''
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$MACOS_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+          rm "$RUNNER_TEMP/certificate.p12"
+          echo "NOTCH_SIGN_IDENTITY=$MACOS_SIGN_IDENTITY" >> "$GITHUB_ENV"
 
-      # --clobber so the job can be re-run. Every release from 7.3.1 to 7.7.0
-      # failed at "Commit cask" below, and re-running the job would have
-      # collided with the zip this same job had already attached. Safe here
-      # because this job is the only thing that builds, hashes and uploads: the
-      # sha256 written into the cask always comes from the very zip being
-      # attached, in the same run.
-      - name: Attach zip to release
-        run: gh release upload "$GITHUB_REF_NAME" "NotificationNanny-${{ steps.version.outputs.version }}.zip" --clobber
+      - name: Build universal app
+        run: ARCHS="arm64 x86_64" BUILD_NUMBER="$GITHUB_RUN_NUMBER" bash scripts/build-notch.sh
+
+      - name: Verify bundle and branding
+        run: |
+          python3 scripts/check-branding.py --app build/NotchNotify.app
+          test "$(lipo -archs build/NotchNotify.app/Contents/MacOS/NotchNotify)" = "x86_64 arm64"
+
+      - name: Notarize
+        if: env.MACOS_CERTIFICATE != ''
+        run: |
+          ditto -c -k --keepParent build/NotchNotify.app "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$NOTARY_APPLE_ID" \
+            --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --wait
+          xcrun stapler staple build/NotchNotify.app
+
+      - name: Package
+        run: |
+          cd build
+          ditto -c -k --keepParent NotchNotify.app "NotchNotify-$VERSION.zip"
+          shasum -a 256 "NotchNotify-$VERSION.zip" > "NotchNotify-$VERSION.zip.sha256"
+          printf '\n**SHA-256** `%s`\n' "$(cut -d' ' -f1 "NotchNotify-$VERSION.zip.sha256")" >> "$RUNNER_TEMP/notes.md"
+
+      - name: Publish release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update cask
+          GH_TOKEN: ${{ github.token }}
         run: |
-          sed -i '' 's/version "[^"]*"/version "${{ steps.version.outputs.version }}"/' Casks/notificationnanny.rb
-          sed -i '' 's/sha256 "[^"]*"/sha256 "${{ steps.sha.outputs.sha256 }}"/' Casks/notificationnanny.rb
-
-      - name: Commit cask
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Casks/notificationnanny.rb
-          git commit -m "chore: bump cask to v${{ steps.version.outputs.version }}"
-          git push origin HEAD:main
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          gh release create "$GITHUB_REF_NAME" \
+            "build/NotchNotify-$VERSION.zip" "build/NotchNotify-$VERSION.zip.sha256" \
+            --title "NotchNotify $VERSION" --notes-file "$RUNNER_TEMP/notes.md"

@@ -1,76 +1,140 @@
-<p align="center">
-  <img src="site/assets/icon-512.png" alt="NotificationNanny app icon" width="96" height="96" />
-</p>
+# NotchNotify
 
-<h1 align="center">NotificationNanny - Now on MacOS 27!</h1>
+![NotchNotify](Resources/Brand/NotchNotify-Logo.png)
 
-<p align="center">
-  Position, scale, tint, and animate notification banners, globally or per app.
-</p>
+A macOS menu-bar app that brings your notifications to the notch.
 
-<p align="center">
-  <a href="https://github.com/chessper53/NotificationNanny/releases/latest"><b>Download for macOS</b></a> ·
-  <a href="https://chessper53.github.io/NotificationNanny/">Website</a> ·
-  <a href="docs/CHANGELOG.md">Changelog</a> ·
-  <a href="https://github.com/chessper53/NotificationNanny/issues">Report an issue</a>
-</p>
+NotchNotify watches for notification banners and shows them as a black card that
+grows out of the camera notch, instead of in the top-right corner. On displays
+without a notch, the card grows from a small pill at the top center.
 
-<p align="center">
-  <img src="https://img.shields.io/github/downloads/chessper53/NotificationNanny/total?style=flat&label=downloads&color=3d4450&logo=apple&logoColor=white" alt="Downloads" />
-  <img src="https://img.shields.io/github/stars/chessper53/NotificationNanny?style=flat&label=stars&color=f0a202" alt="Stars" />
-  <img src="https://img.shields.io/badge/macOS-14%2B-3d4450?style=flat" alt="macOS 14+" />
-</p>
+## Features
 
-<br />
-
-<p align="center">
-  <img src="docs/assets/readme-banner.png" width="699" alt="A tinted NotificationNanny banner placed at the bottom center of the screen, just above the Dock" />
-</p>
-
-<br />
+- **Notch cards.** Choose Expand (default), Drop down, Ease in/out, Fade, or Bounce.
+  Click a card to open the app; the close button hides it. Notification Center
+  keeps the notification either way.
+- **Native mode.** Keep the real macOS banner, including reply and action buttons,
+  but move it to the top center.
+- **Stacking.** Up to three cards at once, with extras queued until there is room.
+  Smaller displays show fewer. Turn stacking off to show one at a time.
+- **Show for** 3, 5 (default), 8, 10, 15 or 30 seconds, or until dismissed. Hover
+  over the notch or any card to pause the whole stack.
+- **Show on** the main display (default), the built-in display, or the display with
+  the pointer. The built-in option falls back to the main display when the lid is closed.
+- **Motion.** *Follow macOS* respects Reduce Motion with a short fade. *Full
+  animations* always uses the selected style.
+- **Preview** the look without granting any permission, and turn on **Open at Login**
+  from the menu bar.
 
 ## Install
 
-With Homebrew:
+Requires macOS 14 Sonoma or later, on Apple silicon or Intel.
+
+1. Download `NotchNotify-<version>.zip` from the
+   [latest release](https://github.com/jakobkollerup/NotchNotify/releases/latest)
+   and move **NotchNotify.app** to **Applications**.
+2. Open it. NotchNotify is not yet notarized by Apple, so macOS blocks the first
+   launch. Open **System Settings › Privacy & Security**, scroll down, and click
+   **Open Anyway** next to NotchNotify. You only need to do this once per download.
+3. In NotchNotify's settings, click **Grant access** and turn on **NotchNotify** under
+   **System Settings › Privacy & Security › Accessibility**.
+4. Click **Send test notification** and allow NotchNotify's own notifications when asked.
+
+Keep notifications enabled for the apps you want to see in the notch. Quit any other
+notification-positioning utility, since two apps moving the same banner fight each other.
+
+Because the app is not signed with a Developer ID, macOS may ask you to grant
+Accessibility again after you install an update. If NotchNotify stops reacting,
+remove it from the Accessibility list with **–** and add it again.
+
+Each release lists a SHA-256 checksum. To verify a download:
 
 ```sh
-brew tap chessper53/notificationnanny https://github.com/chessper53/NotificationNanny
-brew install --cask notificationnanny
+shasum -a 256 NotchNotify-<version>.zip
 ```
-
-Then click the bell icon in your menu bar and grant Accessibility permission. If you installed with Homebrew, updates are one click from the settings panel.
-
-Or install manually:
-
-1. [Download the latest zip](https://github.com/chessper53/NotificationNanny/releases/latest) and open it.
-2. Drag `NotificationNanny.app` into Applications, then launch it.
-3. Click the bell icon in your menu bar and grant Accessibility permission.
-
-You will need to grant Accessibility permission again after every update. macOS ties that permission to the exact build it was granted to, so a new version arrives as an unrecognised app.
-
-## What it does
-
-- Nine anchor points on any display, with independent settings per screen
-- Scale banners from 50% to 250%, tint the background or text, or replace the system banner with a custom styled one
-- Give specific apps their own rules, using named groups with their own position, display, scale, and tint
-- Choose how banners animate in: system default, slide, bounce, fade, or scale
-- Hold banners until your display wakes up, so nothing disappears while you are away
-- Dismiss banners automatically on a timer from 1 to 300 seconds, or leave them until you are ready
-
-## Issues and feature requests
-
-I have a full time job, so responses may take a little while, but nothing goes unread. Found a bug or have an idea? [Open an issue here](https://github.com/chessper53/NotificationNanny/issues).
 
 ## Privacy
 
-No data is collected, transmitted, or stored outside your device. The Accessibility permission is used solely to observe and control notification windows on your local machine.
+NotchNotify runs entirely on your Mac. It has no network code, no analytics and no
+update checks. To draw a card, it reads the app name, title and body of each banner
+through the Accessibility API and keeps them in memory only, for as long as it
+needs them to show and update cards. It never writes notification text to disk or to the system log;
+its in-memory activity log records app names and timings only. It needs
+Accessibility permission because macOS offers no other way for one app to see
+another app's banners.
 
-## How it works
+## Known limitations
 
-NotificationNanny uses the macOS Accessibility API to observe the notification center process. When a banner appears it repositions or replaces it according to your rules. For scaled, tinted, or custom banners it intercepts the notification, moves the system banner off screen, and shows its own window matching the macOS banner style. This relies on private internals, so Apple can change the behavior in any OS update. The app sandbox is disabled because cross process Accessibility access requires it.
+- **The original banner can still appear briefly.** macOS only tells other apps about
+  a banner after it has started to show it, so on a new notification the corner
+  banner can be visible for a frame or two before NotchNotify hides it.
+- **Actions and replies** are only available in Native mode. Clicking a notch card
+  opens the app. Once the original banner has expired, the notification's specific
+  deep link may no longer be available.
+- **macOS updates can break it.** Notification Center is not a public integration API,
+  and its Accessibility structure changes between releases.
+- Cards and the waiting queue live only in memory. They are cleared when you pause,
+  quit, or switch to Native mode.
+- Rapid, identical notifications that macOS merges into one banner show as one card.
 
-For contributors, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers the internals.
+## Uninstall
 
-## License
+Quit NotchNotify from the menu bar (this puts any moved banners back), turn off
+**Open at Login** if you enabled it, and drag the app to the Trash. Optionally remove
+it from **Privacy & Security › Accessibility** and delete its preferences:
 
-Released under the [MIT License](LICENSE).
+```sh
+defaults delete io.github.jakobkollerup.notchnotify
+```
+
+## Build from source
+
+You need the Swift toolchain from Xcode or the Command Line Tools, matching your
+installed macOS SDK.
+
+```sh
+bash scripts/build-notch.sh                          # this Mac's architecture
+ARCHS="arm64 x86_64" bash scripts/build-notch.sh     # universal, as released
+open build/NotchNotify.app
+```
+
+Builds are ad-hoc signed unless `NOTCH_SIGN_IDENTITY` names a codesigning identity.
+With an ad-hoc build, macOS may ask you to remove and re-add the Accessibility entry
+after every rebuild. Building never installs, launches, or registers a login item.
+
+## Development
+
+```sh
+bash scripts/test.sh --skip AXIntegrationTests
+python3 scripts/check-branding.py --app build/NotchNotify.app
+build/NotchNotify.app/Contents/MacOS/NotchNotify --render-preview build/previews
+build/NotchNotify.app/Contents/MacOS/NotchNotify --smoke-test
+```
+
+- `--render-preview` writes synthetic artwork without observing real notifications.
+- `--smoke-test` opens settings and cycles through all five animations, then quits.
+- Live Accessibility tests are opt-in with `NOTCH_LIVE_AX_TESTS=1` and need
+  Accessibility permission.
+- `scripts/ax-probe.swift` dumps Notification Center's Accessibility tree.
+  `scripts/ncdb-probe.swift` measures the notification database as an arrival signal.
+
+To see how quickly native banners are hidden, stream the timing markers. They contain
+window IDs and milliseconds only, never notification content:
+
+```sh
+log stream --info --predicate 'subsystem == "io.github.jakobkollerup.notchnotify" AND category == "handoff"'
+```
+
+The app entry point is `Sources/NotchNotify`. The notification engine is in
+`Sources/NotchNotifyCore/Engine`, and the notch UI and preferences are in
+`Sources/NotchNotifyCore/Notch`. Releases are built by
+[`.github/workflows/release.yml`](.github/workflows/release.yml) when a `v*` tag is pushed.
+
+## Credits and license
+
+NotchNotify started as a fork of
+[Notification Nanny](https://github.com/chessper53/NotificationNanny) by chessper53,
+used under the MIT License. It is released under the MIT License; see
+[LICENSE](LICENSE) and the [third-party notices](docs/THIRD_PARTY_NOTICES.md), which
+are also included in every app bundle. Artwork sources are described in
+[docs/BRANDING.md](docs/BRANDING.md).
